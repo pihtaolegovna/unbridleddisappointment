@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Boards</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div class="container mt-4">
+    <h1 class="text-center">Boards</h1>
+
+    <!-- Filter and Sort Section -->
+    <div class="mb-3">
+        <form method="get" th:action="@{/board}">
+            <div class="row">
+                <!-- Input fields for filtering -->
+                <div class="col">
+                    <input type="text" class="form-control" placeholder="Filter by board number" name="filterBoardNumber" th:value="${filterBoardNumber}">
+                </div>
+                <div class="col">
+                    <input type="text" class="form-control" placeholder="Filter by year" name="filterYear" th:value="${filterYear}">
+                </div>
+                <!-- Model and isDeleted selection -->
+                <div class="col">
+                    <select class="form-control" name="modelId">
+                        <option value="" th:selected="${modelId == null}">All Models</option>
+                        <option th:each="model : ${models}" th:value="${model.id}" th:text="${model.name}" th:selected="${modelId == model.id}"></option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-control" name="isDeleted">
+                        <option value="" th:selected="${isDeleted == null}">All</option>
+                        <option value="false" th:selected="${isDeleted == false}">Active</option>
+                        <option value="true" th:selected="${isDeleted == true}">Deleted</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Board Table -->
+    <table class="table table-bordered rounded">
+        <thead>
+        <tr>
+            <th>Board Number</th>
+            <th>Model</th>
+            <th>Year</th>
+            <th>Seats Amount</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="board : ${boards}">
+            <td th:text="${board.boardnumber}"></td>
+            <td th:text="${board.model.name}"></td>
+            <td th:text="${board.year}"></td>
+            <td th:text="${board.seatsamount}"></td>
+            <td>
+                <button class="btn btn-info" data-toggle="modal" data-target="#editModal"
+                        th:data-id="${board.id}" th:data-boardnumber="${board.boardnumber}" th:data-year="${board.year}"
+                        th:data-seatsamount="${board.seatsamount}" th:data-model="${board.model.id}"
+                        onclick="editBoard(this)">Edit</button>
+
+                <button class="btn btn-danger" th:if="${!board.isDeleted}"
+                        data-toggle="modal" data-target="#logicDeleteModal"
+                        th:data-id="${board.id}">Delete</button>
+
+                <button class="btn btn-info" th:if="${board.isDeleted}"
+                        data-toggle="modal" data-target="#logicDeleteModal"
+                        th:data-id="${board.id}">Restore</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Button to Create Board -->
+    <button class="btn btn-success mb-3" data-toggle="modal" data-target="#createModal">Create Board</button>
+
+    <!-- Create Board Modal -->
+    <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createModalLabel">Create Board</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form method="post" th:action="@{/board/create}">
+                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="boardnumber">Board Number</label>
+                            <input type="text" class="form-control" name="boardnumber" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="model">Model</label>
+                            <select class="form-control" name="model">
+                                <option th:each="model : ${models}" th:value="${model.id}" th:text="${model.name}"></option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="year">Year</label>
+                            <input type="number" class="form-control" name="year" required min="1900" max="2100">
+                        </div>
+                        <div class="form-group">
+                            <label for="seatsamount">Seats Amount</label>
+                            <input type="number" class="form-control" name="seatsamount" required min="1">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Board Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit Board</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form method="post" id="editForm">
+                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                    <input type="hidden" id="editBoardId" name="id">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="editBoardNumber">Board Number</label>
+                            <input type="text" class="form-control" id="editBoardNumber" name="boardnumber" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editModel">Model</label>
+                            <select class="form-control" id="editModel" name="model">
+                                <option th:each="model : ${models}" th:value="${model.id}" th:text="${model.name}"></option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editYear">Year</label>
+                            <input type="number" class="form-control" id="editYear" name="year" required min="1900" max="2100">
+                        </div>
+                        <div class="form-group">
+                            <label for="editSeatsAmount">Seats Amount</label>
+                            <input type="number" class="form-control" id="editSeatsAmount" name="seatsamount" required min="1">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic Delete Modal -->
+    <div class="modal fade" id="logicDeleteModal" tabindex="-1" aria-labelledby="logicDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logicDeleteModalLabel">Delete Model</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to logically delete/restore this board?
+                </div>
+                <div class="modal-footer">
+                    <form method="post" th:action="@{/board/remove}">
+                        <input type="hidden" name="ids" id="logicDeleteId">
+                        <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger">Submit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editBoard(button) {
+        const boardId = $(button).data('id');
+        const boardNumber = $(button).data('boardnumber');
+        const year = $(button).data('year');
+        const seatsAmount = $(button).data('seatsamount');
+        const modelId = $(button).data('model');
+
+        $('#editBoardId').val(boardId);
+        $('#editBoardNumber').val(boardNumber);
+        $('#editYear').val(year);
+        $('#editSeatsAmount').val(seatsAmount);
+        $('#editModel').val(modelId);
+
+        $('#editForm').attr('action', '/board/edit/' + boardId);  // Ensure correct URL
+    }
+
+    $('#logicDeleteModal').on('show.bs.modal', function (event) {
+        const button = $(event.relatedTarget);
+        const boardId = button.data('id');
+        const isDeleted = button.hasClass('btn-info'); // Check button class for Restore action
+        $('#deleteBoardId').val(boardId);
+        $('#logicDeleteText').text(isDeleted ? 'Are you sure you want to restore this board?' : 'Are you sure you want to delete this board?');
+        $('#logicDeleteForm').attr('action', isDeleted ? '/board/restore' : '/board/delete');
+    });
+</script>
+</body>
+</html>

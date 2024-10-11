@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Manufacturers</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div class="container mt-4">
+    <h1>Manufacturers</h1>
+
+    <!-- Filter and Sort Section -->
+    <div class="mb-3">
+        <form method="get" th:action="@{/manufacturer}">
+            <div class="row">
+                <div class="col">
+                    <input type="text" class="form-control" placeholder="Filter by name" name="filterName" th:value="${filterName}">
+                </div>
+                <div class="col">
+                    <select class="form-control" name="isDeleted">
+                        <option value="" th:selected="${isDeleted == null}">All</option>
+                        <option value="false" th:selected="${isDeleted == false}">Active</option>
+                        <option value="true" th:selected="${isDeleted == true}">Deleted</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-control" name="sortField">
+                        <option value="name" th:selected="${sortField == 'name'}">Name</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-control" name="sortDirection">
+                        <option value="asc" th:selected="${sortDirection == 'asc'}">Ascending</option>
+                        <option value="desc" th:selected="${sortDirection == 'desc'}">Descending</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Manufacturer Table -->
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="manufacturer : ${manufacturers}">
+            <td th:text="${manufacturer.name}"></td>
+            <td>
+                <button class="btn btn-info" data-toggle="modal" data-target="#editModal"
+                        th:data-id="${manufacturer.id}" th:data-name="${manufacturer.name}"
+                        onclick="editManufacturer(this)">Edit</button>
+
+                <button class="btn btn-danger" th:if="${!manufacturer.isDeleted}"
+                        data-toggle="modal" data-target="#logicDeleteModal"
+                        th:data-id="${manufacturer.id}">Delete</button>
+
+                <button class="btn btn-info" th:if="${manufacturer.isDeleted}"
+                        data-toggle="modal" data-target="#logicDeleteModal"
+                        th:data-id="${manufacturer.id}">Restore</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <li class="page-item" th:class="${currentPage == 0} ? 'disabled'">
+                <a class="page-link" th:href="@{/manufacturer(page=${currentPage - 1}, size=${size}, filterName=${filterName}, isDeleted=${isDeleted}, sortField=${sortField}, sortDirection=${sortDirection})}" tabindex="-1">Previous</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}" th:class="${i == currentPage} ? 'active'">
+                <a class="page-link" th:href="@{/manufacturer(page=${i}, size=${size}, filterName=${filterName}, isDeleted=${isDeleted}, sortField=${sortField}, sortDirection=${sortDirection})}" th:text="${i + 1}"></a>
+            </li>
+            <li class="page-item" th:class="${currentPage + 1 >= totalPages} ? 'disabled'">
+                <a class="page-link" th:href="@{/manufacturer(page=${currentPage + 1}, size=${size}, filterName=${filterName}, isDeleted=${isDeleted}, sortField=${sortField}, sortDirection=${sortDirection})}">Next</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Button to Create Manufacturer -->
+    <button class="btn btn-success" data-toggle="modal" data-target="#createModal">Create Manufacturer</button>
+
+    <!-- Create Manufacturer Modal -->
+    <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createModalLabel">Create Manufacturer</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form method="post" th:action="@{/manufacturer/create}">
+                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="manufacturer">Manufacturer</label>
+                            <select class="form-control" name="manufacturer" id="manufacturer">
+                                <option value="">Select Manufacturer</option> <!-- Placeholder option -->
+                                <option th:each="manufacturer : ${manufacturers}"
+                                        th:value="${manufacturer.id}"
+                                        th:text="${manufacturer.name}"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Manufacturer Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit Manufacturer</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form method="post" id="editForm">
+                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="manufacturer">Manufacturer</label>
+                            <select class="form-control" name="manufacturer" id="manufacturer">
+                                <option value="">Select Manufacturer</option> <!-- Placeholder option -->
+                                <option th:each="manufacturer : ${manufacturers}"
+                                        th:value="${manufacturer.id}"
+                                        th:text="${manufacturer.name}"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic Delete Modal -->
+    <div class="modal fade" id="logicDeleteModal" tabindex="-1" aria-labelledby="logicDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logicDeleteModalLabel">Delete Manufacturer</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to logically delete/restore this manufacturer?
+                </div>
+                <div class="modal-footer">
+                    <form method="post" th:action="@{/manufacturer/remove}">
+                        <input type="hidden" name="ids" id="logicDeleteId">
+                        <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger">Submit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editManufacturer(button) {
+        const id = button.getAttribute('data-id');
+        const name = button.getAttribute('data-name');
+        document.getElementById('editName').value = name;
+        document.getElementById('editForm').setAttribute('action', '/manufacturer/edit/' + id);
+    }
+
+    $('#logicDeleteModal').on('show.bs.modal', function (event) {
+        const button = $(event.relatedTarget); // Button that triggered the modal
+        const id = button.data('id'); // Extract info from data-* attributes
+        const modal = $(this);
+        modal.find('#logicDeleteId').val(id); // Pass the ID to the hidden input field
+    });
+</script>
+</body>
+</html>

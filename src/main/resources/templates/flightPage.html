@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Flight Management</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Flight Management</h1>
+
+    <!-- Filter Form -->
+    <form th:action="@{/flight}" method="get" class="form-inline mb-3">
+        <input type="text" class="form-control mr-2" name="filterDeparturePlace" placeholder="Departure Place"
+               th:value="${filterDeparturePlace}">
+        <input type="text" class="form-control mr-2" name="filterArrivalPlace" placeholder="Arrival Place"
+               th:value="${filterArrivalPlace}">
+        <select class="form-control mr-2" name="isDeleted">
+            <option value="" th:selected="${isDeleted == null}">All</option>
+            <option value="true" th:selected="${isDeleted}">Deleted</option>
+            <option value="false" th:selected="${isDeleted == false}">Active</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+
+    <!-- Action Buttons -->
+    <div class="mb-3">
+        <button class="btn btn-danger" id="deleteSelected" type="button">Delete Selected</button>
+        <button class="btn btn-info" id="logicDeleteSelected" type="button">Logic Delete Selected</button>
+        <button class="btn btn-success" data-toggle="modal" data-target="#createModal">Create New Flight</button>
+    </div>
+
+    <!-- Flight Table -->
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th><input type="checkbox" id="selectAll"></th>
+            <th><a th:href="@{/flight(sortField='departureplace', sortDirection=${sortDirection == 'asc' ? 'desc' : 'asc'})}">Departure Place</a></th>
+            <th><a th:href="@{/flight(sortField='arrivalplace', sortDirection=${sortDirection == 'asc' ? 'desc' : 'asc'})}">Arrival Place</a></th>
+            <th>Departure Time</th>
+            <th>Arrival Time</th>
+            <th>Board</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="flight : ${flights}">
+            <td><input type="checkbox" class="flightCheckbox" th:value="${flight.id}"></td>
+            <td th:text="${flight.departureplace}"></td>
+            <td th:text="${flight.arrivalplace}"></td>
+            <td th:text="${flight.departuretime}"></td>
+            <td th:text="${flight.arrivaltime}"></td>
+            <td th:text="${flight.board?.boardnumber != null ? flight.board.boardnumber : 'N/A'} + ' ' + ${flight.board.model.manufacturer.name} + ' ' + ${flight.board.model.name}"></td>
+            <td>
+                <button class="btn btn-warning" th:data-toggle="modal" th:data-target="'#editModal' + ${flight.id}" type="button">Edit</button>
+                <button class="btn btn-danger" th:data-toggle="modal" th:data-target="'#deleteModal' + ${flight.id}" type="button">Delete</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                <a class="page-link" th:href="@{/flight(page=${currentPage - 1}, size=${size}, filterDeparturePlace=${filterDeparturePlace}, filterArrivalPlace=${filterArrivalPlace}, isDeleted=${isDeleted}, sortField=${sortField}, sortDirection=${sortDirection})}">Previous</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}" th:classappend="${i == currentPage} ? 'active'">
+                <a class="page-link" th:href="@{/flight(page=${i}, size=${size}, filterDeparturePlace=${filterDeparturePlace}, filterArrivalPlace=${filterArrivalPlace}, isDeleted=${isDeleted}, sortField=${sortField}, sortDirection=${sortDirection})}" th:text="${i + 1}"></a>
+            </li>
+            <li class="page-item" th:classappend="${currentPage + 1 == totalPages} ? 'disabled'">
+                <a class="page-link" th:href="@{/flight(page=${currentPage + 1}, size=${size}, filterDeparturePlace=${filterDeparturePlace}, filterArrivalPlace=${filterArrivalPlace}, isDeleted=${isDeleted}, sortField=${sortField}, sortDirection=${sortDirection})}">Next</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Create Flight Modal -->
+    <div class="modal fade" id="createModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Flight</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="createFlightForm" method="post" th:action="@{/flight/create}">
+                        <div class="form-group">
+                            <label for="departuretime">Departure Time</label>
+                            <input type="datetime-local" class="form-control" name="departuretime" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="arrivaltime">Arrival Time</label>
+                            <input type="datetime-local" class="form-control" name="arrivaltime" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="createDepartureplace">Departure Place</label>
+                            <input type="text" class="form-control" name="departureplace" id="createDepartureplace" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="createArrivalplace">Arrival Place</label>
+                            <input type="text" class="form-control" name="arrivalplace" id="createArrivalplace" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="boardSelect">Board</label>
+                            <select class="form-control" name="boardselect" id="boardselect" required>
+                                <option value="" disabled selected>Select a board</option>
+                                <option th:each="board : ${boards}" th:value="${board.id}" th:text="${board != null ? board.boardnumber : 'N/A'}"></option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Flight</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Flight Modal -->
+    <div th:each="flight : ${flights}">
+        <div class="modal fade" th:id="'editModal' + ${flight.id}" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Flight</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form th:action="@{/flight/edit/{id}(id=${flight.id})}" method="post">
+                            <div class="form-group">
+                                <label for="departuretime">Departure Time</label>
+                                <input type="datetime-local" class="form-control" name="departuretime" th:value="${flight.departuretime}" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="arrivaltime">Arrival Time</label>
+                                <input type="datetime-local" class="form-control" name="arrivaltime" th:value="${flight.arrivaltime}" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="departureplace">Departure Place</label>
+                                <input type="text" class="form-control" name="departureplace" th:value="${flight.departureplace}" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="arrivalplace">Arrival Place</label>
+                                <input type="text" class="form-control" name="arrivalplace" th:value="${flight.arrivalplace}" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="boardSelect">Board</label>
+                                <select class="form-control" name="boardselect" id="boardselect" required>
+                                    <option value="" disabled selected>Select a board</option>
+                                    <option th:each="board : ${boards}" th:value="${board.id}" th:text="${board != null ? board.boardnumber : 'N/A'}"></option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save changes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Flight Modal -->
+    <div th:each="flight : ${flights}">
+        <div class="modal fade" th:id="'deleteModal' + ${flight.id}" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Deletion</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+
+
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <h1>Извинись</span></h1>
+                    </div>
+                    <div class="modal-footer">
+                        <form th:action="@{/flight/delete/{id}(id=${flight.id})}" method="post">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger">Извини</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.getElementById('deleteSelected').onclick = function() {
+        const selectedIds = Array.from(document.querySelectorAll('.flightCheckbox:checked')).map(cb => cb.value);
+        if (selectedIds.length === 0 || !confirm('Are you sure you want to delete selected flights?')) return;
+
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '/flight/delete';
+
+        selectedIds.forEach(id => {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'ids'; // Note: multiple ids with the same name
+            hiddenInput.value = id;   // Directly append the id
+            form.appendChild(hiddenInput);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+    };
+
+    document.getElementById('logicDeleteSelected').onclick = function() {
+        const selectedIds = Array.from(document.querySelectorAll('.flightCheckbox:checked')).map(cb => cb.value);
+        if (selectedIds.length === 0 || !confirm('Are you sure you want to logic delete selected flights?')) return;
+
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '/flight/remove';
+
+        selectedIds.forEach(id => {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'ids'; // Note: multiple ids with the same name
+            hiddenInput.value = id;   // Directly append the id
+            form.appendChild(hiddenInput);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+    };
+</script>
+</body>
+</html>
